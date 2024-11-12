@@ -11,20 +11,22 @@ make
 
 - [x] NATS Transport
   - [ ] Transport Options
+  - [ ] Metrics
 - [ ] TCP Transport
   - [ ] Transport Options
-- [ ] HTTP Interface
+  - [ ] Metrics
+- HTTP Interface
   - [x] Requests with no body
   - [x] Requests with body
   - [x] Ignore Responses
   - [x] Callback for Responses
   - [ ] Asynchronous Requests
-- [ ] Load test specific Interface
+  - [x] Metrics
+- Load test specific Interface
   - [ ] Ignore Responses
   - [ ] Callback for Responses
   - [ ] Asynchronous Requests
-- [ ] Metrics for Transports
-- [ ] Metrics for Interfaces
+  - [ ] Metrics
 
 ## API
 
