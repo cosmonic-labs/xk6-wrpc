@@ -1,4 +1,4 @@
-# wRPC extension for k6 load testing tool
+# wRPC extension for [k6 load testing tool](https://k6.io/)
 
 🚧 **This is a work in progress.** 🚧
 
