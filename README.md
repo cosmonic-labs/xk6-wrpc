@@ -9,13 +9,15 @@ make
 
 ## Features
 
-- [ ] NATS Transport
+- [x] NATS Transport
+  - [ ] Transport Options
 - [ ] TCP Transport
+  - [ ] Transport Options
 - [ ] HTTP Interface
-  - [ ] Requests with no body
-  - [ ] Requests with body
-  - [ ] Ignore Responses
-  - [ ] Callback for Responses
+  - [x] Requests with no body
+  - [x] Requests with body
+  - [x] Ignore Responses
+  - [x] Callback for Responses
   - [ ] Asynchronous Requests
 - [ ] Load test specific Interface
   - [ ] Ignore Responses
@@ -67,6 +69,5 @@ Trying to bring as much as possible from [k6-http](https://grafana.com/docs/k6/l
 - `cookies`
 - `headers`
 - `jar`
-- `redirects`
 - `tags`
 - `timeout`

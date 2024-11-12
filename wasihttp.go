@@ -1,31 +1,42 @@
 package k6wrpc
 
 import (
+	"bytes"
 	"context"
+	"encoding/base64"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
+	"os"
 	"sync"
 	"sync/atomic"
+	"time"
 	wasitypes "xk6-wrpc/internal/wasi/http/types"
 	"xk6-wrpc/internal/wrpc/http/incoming_handler"
 	wrpctypes "xk6-wrpc/internal/wrpc/http/types"
 
 	"github.com/grafana/sobek"
 	"go.k6.io/k6/js/modules"
+	"go.k6.io/k6/lib/netext/httpext"
 	"go.k6.io/k6/metrics"
 	wrpc "wrpc.io/go"
 )
 
 var ErrRPC = errors.New("rpc error")
 
+// default timeout in ms
+var DefaultHTTPTimeout = int64(30 * 1000)
+
 type wasiHTTP struct {
-	vu      modules.VU
-	obj     *sobek.Object
-	metrics *wrpcMetrics
-	tags    *metrics.TagSet
-	client  *http.Client
+	vu               modules.VU
+	obj              *sobek.Object
+	metrics          *wrpcMetrics
+	tags             *metrics.TagSet
+	invoker          wrpc.Invoker
+	responseCallback func(int) bool
 }
 
 func newWasiHTTP(vu modules.VU, wm *wrpcMetrics, options clientOptions) (*wasiHTTP, error) {
@@ -41,96 +52,253 @@ func newWasiHTTP(vu modules.VU, wm *wrpcMetrics, options clientOptions) (*wasiHT
 		metrics: wm,
 		tags:    wm.extendTagSet(options.Tags),
 		obj:     rt.NewObject(),
-		client: &http.Client{
-			Transport: &wasiRoundTripper{
-				driver:  driver.nc,
-				invoker: incoming_handler.Handle,
-			},
+		invoker: driver.nc,
+		responseCallback: func(status int) bool {
+			return status <= 200 && status < 300
 		},
 	}
 
-	if err := w.obj.Set("get", rt.ToValue(w.httpGet)); err != nil {
+	if err := w.obj.Set("get", w.noBodyRequest(http.MethodGet)); err != nil {
+		return nil, err
+	}
+	if err := w.obj.Set("head", w.noBodyRequest(http.MethodGet)); err != nil {
+		return nil, err
+	}
+
+	if err := w.obj.Set("del", w.bodyRequest(http.MethodDelete)); err != nil {
+		return nil, err
+	}
+	if err := w.obj.Set("options", w.noBodyRequest(http.MethodOptions)); err != nil {
+		return nil, err
+	}
+	if err := w.obj.Set("patch", w.noBodyRequest(http.MethodPatch)); err != nil {
+		return nil, err
+	}
+	if err := w.obj.Set("post", w.bodyRequest(http.MethodPost)); err != nil {
+		return nil, err
+	}
+	if err := w.obj.Set("put", w.bodyRequest(http.MethodPut)); err != nil {
 		return nil, err
 	}
 
 	return w, nil
 }
 
-func (w *wasiHTTP) httpGet(url string) {
-	resp, err := w.client.Get(url)
+type httpResponse struct {
+	Status  int
+	Headers map[string][]string
+	body    *bytes.Buffer
+}
 
-	w.metrics.pushIfNotDone(w.vu, w.metrics.httpOperation, 1, w.tags)
+func (h *httpResponse) Body() []byte {
+	return h.body.Bytes()
+}
+
+func (w *wasiHTTP) noBodyRequest(method string) func(url sobek.Value, args ...sobek.Value) (*httpResponse, error) {
+	return func(url sobek.Value, args ...sobek.Value) (*httpResponse, error) {
+		args = append([]sobek.Value{sobek.Undefined()}, args...)
+		return w.request(method, url, args...)
+	}
+}
+
+func (w *wasiHTTP) bodyRequest(method string) func(url sobek.Value, args ...sobek.Value) (*httpResponse, error) {
+	return func(url sobek.Value, args ...sobek.Value) (*httpResponse, error) {
+		return w.request(method, url, args...)
+	}
+}
+
+type wasiTrailer struct{}
+
+func (w wasiTrailer) Receive() ([]*wrpc.Tuple2[string, [][]byte], error) {
+	ret := make([]*wrpc.Tuple2[string, [][]byte], 0)
+	return ret, nil
+}
+
+func (w wasiTrailer) Close() error {
+	return nil
+}
+
+func jsBodyToWrpc(body interface{}) (io.ReadCloser, error) {
+	switch data := body.(type) {
+	case string:
+		return io.NopCloser(bytes.NewBufferString(data)), nil
+	case []byte:
+		return io.NopCloser(bytes.NewBuffer(data)), nil
+	case sobek.ArrayBuffer:
+		return io.NopCloser(bytes.NewBuffer(data.Bytes())), nil
+	case map[string]interface{}:
+		d, err := json.Marshal(data)
+		if err != nil {
+			return nil, err
+		}
+		return io.NopCloser(bytes.NewBuffer(d)), nil
+	case nil:
+		return http.NoBody, nil
+	default:
+		return nil, fmt.Errorf("unsupported body type %T", body)
+	}
+}
+
+func (w *wasiHTTP) request(method string, url sobek.Value, args ...sobek.Value) (*httpResponse, error) {
+	timeout := DefaultHTTPTimeout
+	consumeBody := false
+	reqStart := time.Now()
+
+	measurements := make([]metrics.Sample, 0)
+	defer func() {
+		w.metrics.pushIfNotDone(w.vu, measurements...)
+	}()
+
+	parsedURL, err := httpext.ToURL(url.Export())
 	if err != nil {
-		w.metrics.pushIfNotDone(w.vu, w.metrics.httpError, 1, w.tags)
-		return
+		return nil, err
 	}
+	u := parsedURL.GetURL()
 
-	if resp.StatusCode > 399 && resp.StatusCode < 600 {
-		w.metrics.pushIfNotDone(w.vu, w.metrics.httpError, 1, w.tags)
-	}
-}
+	headers := make([]*wrpc.Tuple2[string, [][]uint8], 0)
 
-var _ http.RoundTripper = (*wasiRoundTripper)(nil)
+	var body io.ReadCloser
 
-type IncomingHandlerOption func(*wasiRoundTripper)
+	var trailers wrpc.Receiver[[]*wrpc.Tuple2[string, [][]uint8]]
+	trailers = wasiTrailer{}
 
-type wasiRoundTripper struct {
-	driver wrpc.Invoker
-	// NOTE(lxf): to override during tests
-	invoker func(context.Context, wrpc.Invoker, *wrpctypes.Request) (*wrpc.Result[incoming_handler.Response, incoming_handler.ErrorCode], <-chan error, error)
-}
-
-func (p *wasiRoundTripper) RoundTrip(r *http.Request) (*http.Response, error) {
-	outgoingBodyTrailer := HttpBodyToWrpc(r.Body, r.Trailer)
-	pathWithQuery := r.URL.Path
-	if r.URL.RawQuery != "" {
-		pathWithQuery += "?" + r.URL.RawQuery
-	}
-	wreq := &wrpctypes.Request{
-		Headers:       HttpHeaderToWrpc(r.Header),
-		Method:        HttpMethodToWrpc(r.Method),
-		Scheme:        HttpSchemeToWrpc(r.URL.Scheme),
-		PathWithQuery: &pathWithQuery,
-		Authority:     &r.Host,
-		Body:          outgoingBodyTrailer,
-		Trailers:      outgoingBodyTrailer,
-	}
-
-	wresp, errCh, err := p.invoker(r.Context(), p.driver, wreq)
+	bodyParam, params := splitRequestArgs(args)
+	body, err = jsBodyToWrpc(bodyParam.Export())
 	if err != nil {
 		return nil, err
 	}
 
-	if wresp.Err != nil {
-		return nil, fmt.Errorf("%w: %s", ErrRPC, wresp.Err)
+	if params != nil {
+		p := params.Export().(map[string]interface{})
+
+		// auth
+		if data, ok := p["auth"]; ok {
+			d := data.(map[string]interface{})
+
+			if user, ok := d["username"]; ok {
+				if pass, ok := d["password"]; ok {
+					headers = append(headers, &wrpc.Tuple2[string, [][]uint8]{
+						V0: "Authorization",
+						V1: [][]uint8{
+							[]byte(
+								fmt.Sprintf("Basic %s", base64.StdEncoding.EncodeToString([]byte(fmt.Sprintf("%s:%s", user, pass))))),
+						},
+					})
+				}
+			}
+
+			// TODO(lxf): bearer tokens
+		}
+
+		// timeout in ms
+		if data, ok := p["timeout"]; ok {
+			timeout = data.(int64)
+		}
+
+		// if we should read the body or not
+		if data, ok := p["consume"]; ok {
+			consumeBody = data.(bool)
+		}
+
+		// headers
+		if data, ok := p["headers"]; ok {
+			h := data.(map[string]interface{})
+			for k, v := range h {
+				vs := v.(string)
+				headers = append(headers, &wrpc.Tuple2[string, [][]uint8]{
+					V0: k,
+					V1: [][]uint8{[]byte(vs)},
+				})
+			}
+		}
+
 	}
 
-	respBody, trailers := WrpcBodyToHttp(wresp.Ok.Body, wresp.Ok.Trailers)
+	pathWithQuery := u.RequestURI()
+	authority := u.Host
 
-	resp := &http.Response{
-		StatusCode: int(wresp.Ok.Status),
-		Header:     make(http.Header),
-		Request:    r,
-		Body:       respBody,
-		Trailer:    trailers,
+	wreq := &wrpctypes.Request{
+		Headers:       headers,
+		Method:        HttpMethodToWrpc(method),
+		Scheme:        HttpSchemeToWrpc(u.Scheme),
+		PathWithQuery: &pathWithQuery,
+		Authority:     &authority,
+		Body:          body,
+		// TODO(lxf): implement trailers?
+		Trailers: trailers,
 	}
 
-	for _, hdr := range wresp.Ok.Headers {
-		for _, hdrVal := range hdr.V1 {
-			resp.Header.Add(hdr.V0, string(hdrVal))
+	ctx, done := context.WithTimeout(w.vu.Context(), time.Duration(timeout)*time.Millisecond)
+	defer done()
+
+	measurements = append(measurements, w.metrics.sample(w.metrics.httpRequest, 1, nil))
+
+	res, _, err := incoming_handler.Handle(ctx, w.invoker, wreq)
+	if err != nil {
+		measurements = append(measurements, w.metrics.sample(w.metrics.transportError, 1, nil))
+		return nil, err
+	}
+
+	if res.Err != nil {
+		measurements = append(measurements, w.metrics.sample(w.metrics.httpError, 1, nil))
+		return nil, res.Err
+	}
+
+	resp := res.Ok
+
+	incomingBody := bytes.NewBuffer(nil)
+	if consumeBody {
+		if _, err := io.Copy(incomingBody, resp.Body); err != nil {
+			return nil, err
+		}
+		resp.Body.Close()
+	}
+
+	reqDuration := time.Since(reqStart)
+	measurements = append(measurements, w.metrics.sample(w.metrics.httpDuration, metrics.D(reqDuration), nil))
+
+	var responseCallback func(int) bool
+	responseCallback = w.responseCallback
+
+	if responseCallback(int(resp.Status)) {
+		measurements = append(measurements, w.metrics.sample(w.metrics.httpResponse, 1, nil))
+	} else {
+		measurements = append(measurements, w.metrics.sample(w.metrics.httpInvalidResponse, 1, nil))
+	}
+
+	incomingHeaders := make(http.Header)
+	for _, header := range resp.Headers {
+		for _, v := range header.V1 {
+			incomingHeaders.Add(header.V0, string(v))
 		}
 	}
 
-	errList := []error{}
-	for err := range errCh {
-		errList = append(errList, err)
-	}
+	return &httpResponse{
+		Status:  int(resp.Status),
+		Headers: incomingHeaders,
+		body:    incomingBody,
+	}, nil
+}
 
-	if len(errList) > 0 {
-		return nil, fmt.Errorf("%w: %v", ErrRPC, errList)
-	}
+func xinit() {
+	slog.SetDefault(slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{
+		Level: slog.LevelDebug, ReplaceAttr: func(groups []string, a slog.Attr) slog.Attr {
+			if a.Key == slog.TimeKey {
+				return slog.Attr{}
+			}
+			return a
+		},
+	})))
+}
 
-	return resp, nil
+func splitRequestArgs(args []sobek.Value) (body sobek.Value, params sobek.Value) {
+	if len(args) > 0 {
+		body = args[0]
+	}
+	if len(args) > 1 {
+		params = args[1]
+	}
+	return body, params
 }
 
 type wrpcIncomingBody struct {
