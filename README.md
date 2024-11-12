@@ -32,10 +32,11 @@ See examples under [\_examples](./_examples) directory.
   - [ ] Asynchronous Requests
   - [x] Metrics
 - Load test specific Interface
-  - [ ] Ignore Responses
-  - [ ] Callback for Responses
-  - [ ] Asynchronous Requests
-  - [ ] Metrics
+  - [x] CPU Burn
+  - [x] Memory Burn
+  - [x] Sleep
+  - [x] Payload
+  - [x] Metrics
 
 ## Blaster API
 
