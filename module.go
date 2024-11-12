@@ -68,6 +68,7 @@ func (r *RootModule) NewModuleInstance(vu modules.VU) modules.Instance {
 	}
 
 	mustExport("http", mi.httpClient)
+	mustExport("blaster", mi.blasterClient)
 
 	return mi
 }
@@ -75,6 +76,32 @@ func (r *RootModule) NewModuleInstance(vu modules.VU) modules.Instance {
 type clientOptions struct {
 	Tags map[string]string `json:"tags,omitempty"`
 	NATS *natsClientOption `json:"nats,omitempty"`
+}
+
+func (mi *ModuleInstance) blasterClient(rawOptions *sobek.Object) *sobek.Object {
+	rt := mi.vu.Runtime()
+
+	data, err := rawOptions.MarshalJSON()
+	if err != nil {
+		common.Throw(rt, err)
+		return nil
+	}
+
+	options := clientOptions{
+		Tags: make(map[string]string),
+	}
+	if err := json.Unmarshal(data, &options); err != nil {
+		common.Throw(rt, err)
+		return nil
+	}
+
+	w, err := newBlaster(mi.vu, mi.metrics, options)
+	if err != nil {
+		common.Throw(rt, err)
+		return nil
+	}
+
+	return w.obj
 }
 
 func (mi *ModuleInstance) httpClient(rawOptions *sobek.Object) *sobek.Object {

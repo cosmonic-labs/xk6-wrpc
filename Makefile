@@ -7,14 +7,15 @@ k6: *.go
 	xk6 build --with xk6-wrpc=.
 
 bindgen:
-	wit-bindgen-wrpc go --out-dir internal --package $(shell go list)/internal wit
+	wit-deps && wit-bindgen-wrpc go --out-dir internal --package $(shell go list)/internal wit
+	(cd blaster-component && wit-deps && go generate)
 
-build: k6
+component:
+	(cd blaster-component && tinygo build -target wasip2 -wit-package wit -wit-world server)
 
-run: k6
-	./k6 run ./_examples/basic.js
+build: k6 component
 
 docker:
 	docker build -t $(BUILD_IMAGE):$(BUILD_TAG) .
 
-.PHONY: build bindgen run docker
+.PHONY: build bindgen docker

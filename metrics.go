@@ -22,6 +22,13 @@ type wrpcMetrics struct {
 	httpError *metrics.Metric
 	// http request x response duration
 	httpDuration *metrics.Metric
+
+	// operations
+	blasterOperation *metrics.Metric
+	// underlying wrpc encoding errors
+	blasterTransportError *metrics.Metric
+	// operation duration
+	blasterDuration *metrics.Metric
 }
 
 const (
@@ -30,8 +37,11 @@ const (
 	metricHTTPInvalidResponse = "wrpc_http_invalid_response"
 	metricHTTPError           = "wrpc_http_error"
 	metricTransportError      = "wrpc_transport_error"
+	metricHTTPDuration        = "wrpc_http_duration"
 
-	metricHTTPDuration = "wrpc_http_duration"
+	metriBlasterOperation       = "wrpc_blaster_operation"
+	metricBlasterTransportError = "wrpc_blaster_transport_error"
+	metricBlasterDuration       = "wrpc_blaster_duration"
 )
 
 func newWrpcMetrics(registry *metrics.Registry) *wrpcMetrics {
@@ -42,7 +52,11 @@ func newWrpcMetrics(registry *metrics.Registry) *wrpcMetrics {
 		httpInvalidResponse: registry.MustNewMetric(metricHTTPInvalidResponse, metrics.Counter),
 		httpError:           registry.MustNewMetric(metricHTTPError, metrics.Counter),
 		transportError:      registry.MustNewMetric(metricTransportError, metrics.Counter),
-		tags:                registry.RootTagSet(),
+
+		blasterOperation:      registry.MustNewMetric(metriBlasterOperation, metrics.Counter),
+		blasterTransportError: registry.MustNewMetric(metricBlasterTransportError, metrics.Counter),
+		blasterDuration:       registry.MustNewMetric(metricBlasterDuration, metrics.Trend, metrics.Time),
+		tags:                  registry.RootTagSet(),
 	}
 }
 

@@ -87,11 +87,7 @@ func newWasiHTTP(vu modules.VU, wm *wrpcMetrics, options clientOptions) (*wasiHT
 type httpResponse struct {
 	Status  int
 	Headers map[string][]string
-	body    *bytes.Buffer
-}
-
-func (h *httpResponse) Body() []byte {
-	return h.body.Bytes()
+	Body    []byte
 }
 
 func (w *wasiHTTP) noBodyRequest(method string) func(url sobek.Value, args ...sobek.Value) (*httpResponse, error) {
@@ -276,7 +272,7 @@ func (w *wasiHTTP) request(method string, url sobek.Value, args ...sobek.Value) 
 	return &httpResponse{
 		Status:  int(resp.Status),
 		Headers: incomingHeaders,
-		body:    incomingBody,
+		Body:    incomingBody.Bytes(),
 	}, nil
 }
 

@@ -1,0 +1,18 @@
+package xk6:wrpc@0.0.1;
+
+interface blaster {
+  record packet {
+    // The ID of the packet
+    id: string,
+    // The payload of the packet
+    payload: list<u8>,
+    // Tells the component to allocate memory
+    mem-burn-mb: u64,
+    // Tells the component to spinlock the CPU
+    cpu-burn-ms: u64,
+    // Tells the component to sleep
+    wait-ms: u64,
+  }
+
+  blast: func(packet: packet);
+}

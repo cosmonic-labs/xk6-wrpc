@@ -2,4 +2,5 @@ package xk6:plugin;
 
 world wrpc {
   import wrpc:http/incoming-handler@0.1.0;
+  import xk6:wrpc/blaster@0.0.1;
 }

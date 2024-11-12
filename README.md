@@ -2,10 +2,19 @@
 
 🚧 **This is a work in progress.** 🚧
 
+What's included:
+
+- `wasi:http` wRPC client
+- Generic wRPC blaster client
+- Component for receiving blaster packets
+
+To build a new `k6` binary:
+
 ```sh
 make
-./k6 run ./_examples/basic.js
 ```
+
+See examples under [\_examples](./_examples) directory.
 
 ## Features
 
@@ -28,7 +37,57 @@ make
   - [ ] Asynchronous Requests
   - [ ] Metrics
 
-## API
+## Blaster API
+
+To be used together with [wrpc-wasmtime-nats](https://github.com/bytecodealliance/wrpc).
+
+Use the [blaster-component](./blaster-component) as receiver.
+
+```sh
+make component
+RUST_LOG=error wrpc-wasmtime-nats serve -n nats://127.0.0.1:4222 wasmtime wasmtime blaster-component/blaster-component.wasm
+```
+
+For the `init` context:
+
+```javascript
+// create a wrpc blaster client with nats transport
+// each VU will have a dedicated nats connection
+let blaster = wrpc.blaster({
+  nats: {
+    url: "nats://localhost:4222",
+    prefix: "wasmtime",
+  },
+  // metric tags
+  tags: { scenario: "basic" },
+});
+```
+
+For the `scenario` context:
+
+```javascript
+// send a single packet (io blocking)
+blaster.blast();
+
+// tell component to burn cpu for 100ms
+blaster.blast({
+  cpu_burn_ms: 100,
+});
+```
+
+`blaster`
+
+- `blast(packet)`
+
+`packet` is an object that can tell the wasm component to change behaviour:
+
+- `cpu_burn_ms` (integer): Tell the component to burn cpu for X milliseconds
+- `payload` (string): Arbitrary payload for the packet
+- `memory_burn_mb` (integer): Tell the component to allocate X mb memory
+- `wait_ms` (integer): Tell the component to sleep for X milliseconds
+- `timeout` (integer): Request timeout in milliseconds
+
+## HTTP API
 
 For the `init` context:
 

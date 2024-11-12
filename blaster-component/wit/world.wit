@@ -1,0 +1,8 @@
+package xk6:component@0.0.1;
+
+world server {
+  // tinygo
+  include wasi:cli/imports@0.2.0;
+
+  export xk6:wrpc/blaster@0.0.1;
+}
