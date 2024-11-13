@@ -34,7 +34,7 @@ type wasiHTTP struct {
 	vu               modules.VU
 	obj              *sobek.Object
 	metrics          *wrpcMetrics
-	tags             *metrics.TagSet
+	tags             map[string]string
 	invoker          wrpc.Invoker
 	responseCallback func(int) bool
 }
@@ -50,7 +50,7 @@ func newWasiHTTP(vu modules.VU, wm *wrpcMetrics, options clientOptions) (*wasiHT
 	w := &wasiHTTP{
 		vu:      vu,
 		metrics: wm,
-		tags:    wm.extendTagSet(options.Tags),
+		tags:    options.Tags,
 		obj:     rt.NewObject(),
 		invoker: driver.nc,
 		responseCallback: func(status int) bool {
@@ -136,14 +136,20 @@ func jsBodyToWrpc(body interface{}) (io.ReadCloser, error) {
 }
 
 func (w *wasiHTTP) request(method string, url sobek.Value, args ...sobek.Value) (*httpResponse, error) {
+	var tagSet *metrics.TagSet
+	if state := w.vu.State(); state == nil {
+		return nil, fmt.Errorf("missing state wasihttp")
+	} else {
+		tagSet = state.Tags.GetCurrentValues().Tags
+	}
 	timeout := DefaultHTTPTimeout
 	consumeBody := false
-	reqStart := time.Now()
 
 	measurements := make([]metrics.Sample, 0)
 	defer func() {
 		w.metrics.pushIfNotDone(w.vu, measurements...)
 	}()
+	reqStart := time.Now()
 
 	parsedURL, err := httpext.ToURL(url.Export())
 	if err != nil {
@@ -227,16 +233,16 @@ func (w *wasiHTTP) request(method string, url sobek.Value, args ...sobek.Value) 
 	ctx, done := context.WithTimeout(w.vu.Context(), time.Duration(timeout)*time.Millisecond)
 	defer done()
 
-	measurements = append(measurements, w.metrics.sample(w.metrics.httpRequest, 1, nil))
+	measurements = append(measurements, w.metrics.sample(w.metrics.httpRequest, 1, tagSet))
 
 	res, _, err := incoming_handler.Handle(ctx, w.invoker, wreq)
 	if err != nil {
-		measurements = append(measurements, w.metrics.sample(w.metrics.transportError, 1, nil))
+		measurements = append(measurements, w.metrics.sample(w.metrics.transportError, 1, tagSet))
 		return nil, err
 	}
 
 	if res.Err != nil {
-		measurements = append(measurements, w.metrics.sample(w.metrics.httpError, 1, nil))
+		measurements = append(measurements, w.metrics.sample(w.metrics.httpError, 1, tagSet))
 		return nil, res.Err
 	}
 
@@ -251,15 +257,15 @@ func (w *wasiHTTP) request(method string, url sobek.Value, args ...sobek.Value) 
 	}
 
 	reqDuration := time.Since(reqStart)
-	measurements = append(measurements, w.metrics.sample(w.metrics.httpDuration, metrics.D(reqDuration), nil))
+	measurements = append(measurements, w.metrics.sample(w.metrics.httpDuration, metrics.D(reqDuration), tagSet))
 
 	var responseCallback func(int) bool
 	responseCallback = w.responseCallback
 
 	if responseCallback(int(resp.Status)) {
-		measurements = append(measurements, w.metrics.sample(w.metrics.httpResponse, 1, nil))
+		measurements = append(measurements, w.metrics.sample(w.metrics.httpResponse, 1, tagSet))
 	} else {
-		measurements = append(measurements, w.metrics.sample(w.metrics.httpInvalidResponse, 1, nil))
+		measurements = append(measurements, w.metrics.sample(w.metrics.httpInvalidResponse, 1, tagSet))
 	}
 
 	incomingHeaders := make(http.Header)

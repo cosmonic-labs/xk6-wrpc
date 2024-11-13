@@ -8,8 +8,6 @@ import (
 )
 
 type wrpcMetrics struct {
-	tags *metrics.TagSet
-
 	// underlying wrpc encoding errors
 	transportError *metrics.Metric
 	// requests created
@@ -56,40 +54,17 @@ func newWrpcMetrics(registry *metrics.Registry) *wrpcMetrics {
 		blasterOperation:      registry.MustNewMetric(metriBlasterOperation, metrics.Counter),
 		blasterTransportError: registry.MustNewMetric(metricBlasterTransportError, metrics.Counter),
 		blasterDuration:       registry.MustNewMetric(metricBlasterDuration, metrics.Trend, metrics.Time),
-		tags:                  registry.RootTagSet(),
 	}
 }
 
-func (wm *wrpcMetrics) extendTagSet(tags map[string]string) *metrics.TagSet {
-	tt := wm.tags
-
-	if tags != nil {
-		for k, v := range tags {
-			tt = wm.tags.With(k, v)
-		}
-	}
-
-	return tt
-}
-
-func (wm *wrpcMetrics) sample(metric *metrics.Metric, value float64, tags map[string]string) metrics.Sample {
+func (wm *wrpcMetrics) sample(metric *metrics.Metric, value float64, tags *metrics.TagSet) metrics.Sample {
 	return metrics.Sample{
-		TimeSeries: metrics.TimeSeries{Metric: metric, Tags: wm.extendTagSet(tags)},
+		TimeSeries: metrics.TimeSeries{Metric: metric, Tags: tags},
 		Time:       time.Now(),
 		Value:      value,
 	}
 }
 
 func (wm *wrpcMetrics) pushIfNotDone(vu modules.VU, samples ...metrics.Sample) {
-	state := vu.State()
-	if state == nil {
-		return
-	}
-
-	ctx := vu.Context()
-	if ctx == nil {
-		return
-	}
-
-	metrics.PushIfNotDone(ctx, state.Samples, metrics.Samples(samples))
+	metrics.PushIfNotDone(vu.Context(), vu.State().Samples, metrics.Samples(samples))
 }
