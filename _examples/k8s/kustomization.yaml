@@ -1,0 +1,13 @@
+configurations:
+  - references.yaml
+
+namespace: k6
+
+resources:
+  - testrun.yaml
+  - wasmtime.yaml
+
+configMapGenerator:
+  - name: wrpc-example
+    files:
+      - test.js

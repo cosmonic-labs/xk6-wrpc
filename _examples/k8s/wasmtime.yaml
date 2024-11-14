@@ -1,0 +1,32 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: wasmtime
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: wasmtime
+  template:
+    metadata:
+      labels:
+        app: wasmtime
+    spec:
+      containers:
+        - name: wrpc-wasmtime
+          image: ghcr.io/cosmonic-labs/xk6-wrpc:main
+          imagePullPolicy: Always
+          env:
+            - name: RUST_LOG
+              value: error
+          command:
+            - wrpc-wasmtime
+            - nats
+            - serve
+            - -n
+            - nats://nats.default.svc.cluster.local:4222
+            - --export
+            - wasmtime
+            - -g
+            - wrpc
+            - /blaster-component.wasm
