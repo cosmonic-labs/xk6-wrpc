@@ -4,7 +4,7 @@ export const options = {
   scenarios: {
     blaster: {
       executor: "constant-vus",
-      vus: 10,
+      vus: 50,
       duration: "15m",
       exec: "wrpcBlaster",
     },
@@ -12,7 +12,8 @@ export const options = {
     //   executor: "constant-vus",
     //   vus: 10,
     //   duration: "15m",
-    //   exec: "httpBlaster",
+    //   startTime: "15m",
+    //   exec: "wrpcHttpBlaster",
     // },
   },
 };
@@ -24,7 +25,7 @@ let blaster = wrpc.blaster({
   },
 });
 
-let http = wrpc.http({
+let wrpcHttp = wrpc.http({
   nats: {
     url: "nats://nats-headless.default.svc.cluster.local:4222",
     prefix: "wasmtime",
@@ -35,6 +36,6 @@ export function wrpcBlaster() {
   blaster.blast();
 }
 
-export function httpBlaster() {
-  http.get("http://localhost:8080/");
+export function wrpcHttpBlaster() {
+  wrpcHttp.get("http://localhost:8080/");
 }

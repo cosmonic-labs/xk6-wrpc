@@ -3,13 +3,15 @@ kind: TestRun
 metadata:
   name: wasmcloud
 spec:
-  parallelism: 5
+  parallelism: 4
   # pod anti-affinity
-  separate: true
+  # separate: true
   arguments: "--tag test-id=wasmcloud -o experimental-opentelemetry"
   runner:
     image: ghcr.io/cosmonic-labs/xk6-wrpc:main
     imagePullPolicy: Always
+    # nodeSelector:
+    #   cloud.google.com/compute-class: Scale-Out
     env:
       - name: K6_OTEL_GRPC_EXPORTER_INSECURE
         value: "true"
