@@ -1,0 +1,23 @@
+apiVersion: k6.io/v1alpha1
+kind: TestRun
+metadata:
+  name: wasmtime
+spec:
+  parallelism: 5
+  # pod anti-affinity
+  separate: true
+  arguments: "--tag test-id=wasmtime -o experimental-opentelemetry"
+  runner:
+    image: ghcr.io/cosmonic-labs/xk6-wrpc:main
+    imagePullPolicy: Always
+    env:
+      - name: K6_OTEL_GRPC_EXPORTER_INSECURE
+        value: "true"
+      - name: K6_OTEL_GRPC_EXPORTER_ENDPOINT
+        value: "otel-collector-headless.default.svc.loadtesting:4317"
+      - name: K6_OTEL_METRIC_PREFIX
+        value: "k6_"
+  script:
+    configMap:
+      name: tests
+      file: wasmtime-test.js

@@ -4,10 +4,12 @@ configurations:
 namespace: k6
 
 resources:
-  - testrun.yaml
-  - wasmtime.yaml
+  - wasmcloud-test.yaml
+  - wasmtime-test.yaml
+  - blaster-component-wasmtime.yaml
 
 configMapGenerator:
-  - name: wrpc-example
+  - name: tests
     files:
-      - test.js
+      - wasmcloud-test.js
+      - wasmtime-test.js

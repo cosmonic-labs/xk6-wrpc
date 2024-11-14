@@ -1,10 +1,12 @@
 apiVersion: k6.io/v1alpha1
 kind: TestRun
 metadata:
-  name: wrpc-example
+  name: wasmcloud
 spec:
-  parallelism: 1
-  arguments: "--tag test-id=http-test -o experimental-opentelemetry"
+  parallelism: 5
+  # pod anti-affinity
+  separate: true
+  arguments: "--tag test-id=wasmcloud -o experimental-opentelemetry"
   runner:
     image: ghcr.io/cosmonic-labs/xk6-wrpc:main
     imagePullPolicy: Always
@@ -17,5 +19,5 @@ spec:
         value: "k6_"
   script:
     configMap:
-      name: wrpc-example
-      file: test.js
+      name: tests
+      file: wasmcloud-test.js

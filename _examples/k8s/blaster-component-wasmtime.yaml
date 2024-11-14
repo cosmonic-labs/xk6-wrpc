@@ -6,16 +6,24 @@ spec:
   replicas: 3
   selector:
     matchLabels:
-      app: wasmtime
+      app.kubernetes.io/name: wasmtime
   template:
     metadata:
       labels:
-        app: wasmtime
+        app.kubernetes.io/name: wasmtime
     spec:
+      nodeSelector:
+        cloud.google.com/compute-class: Balanced
       containers:
-        - name: wrpc-wasmtime
+        - name: wasmtime
           image: ghcr.io/cosmonic-labs/xk6-wrpc:main
           imagePullPolicy: Always
+          resources:
+            requests:
+              memory: "11Gi"
+              cpu: "8"
+            limits:
+              cpu: "8"
           env:
             - name: RUST_LOG
               value: error
@@ -24,7 +32,7 @@ spec:
             - nats
             - serve
             - -n
-            - nats://nats.default.svc.cluster.local:4222
+            - nats://nats-headless.default.svc.cluster.local:4222
             - --export
             - wasmtime
             - -g

@@ -1,0 +1,17 @@
+apiVersion: core.oam.dev/v1beta1
+kind: Application
+metadata:
+  name: blaster-component
+  annotations:
+    description: Blast Away
+    wasmcloud.dev/authors: Cosmonic
+spec:
+  components:
+    - name: component
+      type: component
+      properties:
+        image: ttl.sh/da0244dc-90ee-4de3-8671-962a95c024d1:24h
+      traits:
+        - type: spreadscaler
+          properties:
+            replicas: 100
