@@ -40,13 +40,13 @@ See examples under [\_examples](./_examples) directory.
 
 ## Blaster API
 
-To be used together with [wrpc-wasmtime-nats](https://github.com/bytecodealliance/wrpc).
+To be used together with [wrpc-wasmtime](https://github.com/bytecodealliance/wrpc).
 
 Use the [blaster-component](./blaster-component) as receiver.
 
 ```sh
 make component
-RUST_LOG=error wrpc-wasmtime-nats serve -n nats://127.0.0.1:4222 wasmtime wasmtime blaster-component/blaster-component.wasm
+RUST_LOG=error wrpc-wasmtime nats serve -n nats://127.0.0.1:4222 --export wasmtime -g wrpc ./blaster-component/blaster-component.wasm
 ```
 
 For the `init` context:
