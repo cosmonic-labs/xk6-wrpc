@@ -2,7 +2,7 @@ FROM golang:1.23 AS build
 WORKDIR /go/src/xk6-wrpc
 RUN go install go.k6.io/xk6/cmd/xk6@latest
 COPY . .
-RUN xk6 build --with xk6-wrpc=.
+RUN xk6 build --with xk6-wrpc=. --with github.com/grafana/xk6-dashboard@latest
 
 FROM alpine:latest AS base
 RUN apk add --no-cache ca-certificates && \
