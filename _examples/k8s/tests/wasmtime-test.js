@@ -20,14 +20,14 @@ export const options = {
 
 let blaster = wrpc.blaster({
   nats: {
-    url: "nats://nats-headless.default.svc.cluster.local:4222",
+    url: "nats://nats-headless:4222",
     prefix: "wasmtime",
   },
 });
 
 let wrpcHttp = wrpc.http({
   nats: {
-    url: "nats://nats-headless.default.svc.cluster.local:4222",
+    url: "nats://nats-headless:4222",
     prefix: "wasmtime",
   },
 });

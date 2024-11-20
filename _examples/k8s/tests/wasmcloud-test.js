@@ -28,14 +28,14 @@ export const options = {
 
 let blaster = wrpc.blaster({
   nats: {
-    url: "nats://nats-headless.default.svc.cluster.local:4222",
+    url: "nats://nats-headless:4222",
     prefix: "default.blaster_component-component",
   },
 });
 
 let wrpcHttp = wrpc.http({
   nats: {
-    url: "nats://nats-headless.default.svc.cluster.local:4222",
+    url: "nats://nats-headless:4222",
     prefix: "default.rust_hello_world-http_component",
   },
 });
@@ -49,5 +49,5 @@ export function wrpcHttpBlaster() {
 }
 
 export function httpBlaster() {
-  http.get("http://wasmcloud-http-headless.default.svc.cluster.local:8080/");
+  http.get("http://wasmcloud-http-headless:8080/");
 }

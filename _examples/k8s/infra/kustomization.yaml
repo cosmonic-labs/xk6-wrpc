@@ -1,0 +1,4 @@
+resources:
+  - namespace.yaml
+  - k6-operator
+  - k6

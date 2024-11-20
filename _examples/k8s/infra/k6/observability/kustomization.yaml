@@ -1,0 +1,32 @@
+resources:
+  - opentelemetry-collector.yaml
+  - prometheus.yaml
+  - tempo.yaml
+  - loki.yaml
+  - grafana.yaml
+
+configMapGenerator:
+  - name: opentelemetry-collector
+    files:
+      - otel-config.yaml
+
+  - name: prometheus
+    files:
+      - prometheus-config.yaml
+
+  - name: tempo
+    files:
+      - tempo-config.yaml
+
+  - name: loki
+    files:
+      - loki-config.yaml
+
+  - name: grafana
+    files:
+      - grafana-dashboards.yaml
+      - grafana-datasources.yaml
+
+  - name: grafana-dashboards
+    files:
+      - lwc.json

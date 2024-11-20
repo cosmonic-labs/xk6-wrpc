@@ -32,7 +32,7 @@ spec:
             - nats
             - serve
             - -n
-            - nats://nats-headless.default.svc.cluster.local:4222
+            - nats://nats-headless:4222
             - --export
             - wasmtime
             - -g

@@ -1,12 +1,11 @@
+namespace: k6
+
 configurations:
   - references.yaml
 
-namespace: k6
-
 resources:
   - wasmcloud-test.yaml
-  #- wasmtime-test.yaml
-  - blaster-component-wasmtime.yaml
+  - wasmtime-test.yaml
 
 configMapGenerator:
   - name: tests

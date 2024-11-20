@@ -1,0 +1,130 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  labels:
+    app.kubernetes.io/name: prometheus
+  name: prometheus
+spec:
+  podManagementPolicy: Parallel
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: prometheus
+  serviceName: prometheus-headless
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: prometheus
+    spec:
+      containers:
+        - args:
+            - "--config.file=/etc/prometheus-config/prometheus-config.yaml"
+            - "--web.enable-remote-write-receiver"
+            - "--enable-feature=native-histograms"
+          env:
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  apiVersion: v1
+                  fieldPath: metadata.name
+            - name: SERVER_NAME
+              value: $(POD_NAME)
+          image: prom/prometheus:v2.54.1
+          imagePullPolicy: IfNotPresent
+          name: prometheus
+          ports:
+            - containerPort: 9090
+              name: prometheus
+              protocol: TCP
+          resources:
+            limits:
+              cpu: "2"
+              ephemeral-storage: 1Gi
+              memory: 8Gi
+            requests:
+              cpu: "2"
+              ephemeral-storage: 1Gi
+              memory: 8Gi
+          securityContext:
+            capabilities:
+              drop:
+                - NET_RAW
+          volumeMounts:
+            - mountPath: /etc/prometheus-config
+              name: config
+            - mountPath: /data
+              name: prometheus-data
+      dnsPolicy: ClusterFirst
+      enableServiceLinks: false
+      restartPolicy: Always
+      shareProcessNamespace: true
+      terminationGracePeriodSeconds: 30
+      tolerations:
+        - effect: NoSchedule
+          key: kubernetes.io/arch
+          operator: Equal
+          value: amd64
+      volumes:
+        - configMap:
+            defaultMode: 420
+            name: prometheus
+          name: config
+        - emptyDir: {}
+          name: pid
+  updateStrategy:
+    rollingUpdate:
+      partition: 0
+    type: RollingUpdate
+  volumeClaimTemplates:
+    - apiVersion: v1
+      kind: PersistentVolumeClaim
+      metadata:
+        name: prometheus-data
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: 10Gi
+        volumeMode: Filesystem
+---
+apiVersion: v1
+kind: Service
+metadata:
+  annotations:
+  labels:
+    app.kubernetes.io/name: prometheus
+  name: prometheus-headless
+spec:
+  clusterIP: None
+  internalTrafficPolicy: Cluster
+  ports:
+    - appProtocol: tcp
+      name: prometheus
+      port: 9090
+      protocol: TCP
+      targetPort: prometheus
+  publishNotReadyAddresses: true
+  selector:
+    app.kubernetes.io/name: prometheus
+  sessionAffinity: None
+  type: ClusterIP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app.kubernetes.io/name: prometheus
+  name: prometheus
+spec:
+  internalTrafficPolicy: Cluster
+  ports:
+    - appProtocol: tcp
+      name: prometheus
+      port: 9090
+      protocol: TCP
+      targetPort: prometheus
+  selector:
+    app.kubernetes.io/name: prometheus
+  sessionAffinity: None
+  type: ClusterIP
