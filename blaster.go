@@ -61,7 +61,7 @@ func (w *wasiBlaster) doBlast(options sobek.Value) error {
 	if state := w.vu.State(); state == nil {
 		return fmt.Errorf("missing state blaster")
 	} else {
-		tagSet = state.Tags.GetCurrentValues().Tags
+		tagSet = state.Tags.GetCurrentValues().Tags.WithTagsFromMap(w.tags)
 	}
 
 	timeout := DefaultBlasterTimeout

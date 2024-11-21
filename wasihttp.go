@@ -140,7 +140,7 @@ func (w *wasiHTTP) request(method string, url sobek.Value, args ...sobek.Value) 
 	if state := w.vu.State(); state == nil {
 		return nil, fmt.Errorf("missing state wasihttp")
 	} else {
-		tagSet = state.Tags.GetCurrentValues().Tags
+		tagSet = state.Tags.GetCurrentValues().Tags.WithTagsFromMap(w.tags)
 	}
 	timeout := DefaultHTTPTimeout
 	consumeBody := false
