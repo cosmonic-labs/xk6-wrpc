@@ -3,7 +3,7 @@ FROM ghcr.io/bytecodealliance/wrpc:cb43ec8 AS wrpc
 FROM golang:1.23 AS build
 WORKDIR /go/src/xk6-wrpc
 RUN go install go.k6.io/xk6/cmd/xk6@latest
-RUN CGO_ENABLED=0 go install github.com/nats-io/natscli/nats@latest
+RUN CGO_ENABLED=0 go install github.com/nats-io/natscli/nats@main
 RUN CGO_ENABLED=0 go install github.com/rakyll/hey@v0.1.4
 COPY . .
 RUN xk6 build --with xk6-wrpc=. --with github.com/grafana/xk6-dashboard@latest
