@@ -61,7 +61,7 @@ func newWasiHTTP(vu modules.VU, wm *wrpcMetrics, options clientOptions) (*wasiHT
 	if err := w.obj.Set("get", w.noBodyRequest(http.MethodGet)); err != nil {
 		return nil, err
 	}
-	if err := w.obj.Set("head", w.noBodyRequest(http.MethodGet)); err != nil {
+	if err := w.obj.Set("head", w.noBodyRequest(http.MethodHead)); err != nil {
 		return nil, err
 	}
 
@@ -248,13 +248,15 @@ func (w *wasiHTTP) request(method string, url sobek.Value, args ...sobek.Value) 
 
 	resp := res.Ok
 
-	incomingBody := bytes.NewBuffer(nil)
+	var incomingBody []byte
 	if consumeBody {
-		if _, err := io.Copy(incomingBody, resp.Body); err != nil {
+		bodyReader := bytes.NewBuffer(incomingBody)
+		if _, err := io.Copy(bodyReader, resp.Body); err != nil {
 			return nil, err
 		}
-		resp.Body.Close()
+		incomingBody = bodyReader.Bytes()
 	}
+	resp.Body.Close()
 
 	reqDuration := time.Since(reqStart)
 	measurements = append(measurements, w.metrics.sample(w.metrics.httpDuration, metrics.D(reqDuration), tagSet))
@@ -278,7 +280,7 @@ func (w *wasiHTTP) request(method string, url sobek.Value, args ...sobek.Value) 
 	return &httpResponse{
 		Status:  int(resp.Status),
 		Headers: incomingHeaders,
-		Body:    incomingBody.Bytes(),
+		Body:    incomingBody,
 	}, nil
 }
 
