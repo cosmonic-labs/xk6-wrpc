@@ -1,0 +1,7 @@
+resources:
+  - blaster
+
+configMapGenerator:
+  - name: wasmcloud-tests
+    files:
+      - blaster.js

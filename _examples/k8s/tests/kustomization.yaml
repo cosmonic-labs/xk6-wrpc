@@ -1,14 +1,6 @@
 namespace: k6
 
-configurations:
-  - references.yaml
-
 resources:
-  - wasmcloud-test.yaml
-  - wasmtime-test.yaml
-
-configMapGenerator:
-  - name: tests
-    files:
-      - wasmcloud-test.js
-      - wasmtime-test.js
+  #  - wasmcloud
+  #  - wasmtime
+  - invoker

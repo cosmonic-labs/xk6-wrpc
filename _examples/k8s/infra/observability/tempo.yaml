@@ -1,0 +1,137 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  labels:
+    app.kubernetes.io/name: tempo
+  name: tempo
+spec:
+  podManagementPolicy: Parallel
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: tempo
+  serviceName: tempo-headless
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: tempo
+        k6-stack: "true"
+    spec:
+      initContainers:
+        - name: volume-mount-hack
+          image: busybox
+          # 10001 is the id of user 'tempo'
+          command: ["sh", "-c", "chown -R 10001:10001 /data"]
+          volumeMounts:
+            - name: tempo-data
+              mountPath: /data
+      containers:
+        - args:
+            - "-config.file=/etc/tempo-config/tempo-config.yaml"
+          env:
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  apiVersion: v1
+                  fieldPath: metadata.name
+            - name: SERVER_NAME
+              value: $(POD_NAME)
+          image: grafana/tempo:2.6.0
+          imagePullPolicy: IfNotPresent
+          name: tempo
+          ports:
+            - containerPort: 7999
+              name: tempo
+              protocol: TCP
+          # resources:
+          #   limits:
+          #     cpu: "2"
+          #     ephemeral-storage: 1Gi
+          #     memory: 8Gi
+          #   requests:
+          #     cpu: "2"
+          #     ephemeral-storage: 1Gi
+          #     memory: 8Gi
+          securityContext:
+            capabilities:
+              drop:
+                - NET_RAW
+          volumeMounts:
+            - mountPath: /etc/tempo-config
+              name: config
+            - mountPath: /data
+              name: tempo-data
+      dnsPolicy: ClusterFirst
+      enableServiceLinks: false
+      restartPolicy: Always
+      shareProcessNamespace: true
+      terminationGracePeriodSeconds: 30
+      tolerations:
+        - effect: NoSchedule
+          key: kubernetes.io/arch
+          operator: Equal
+          value: amd64
+      volumes:
+        - configMap:
+            defaultMode: 420
+            name: tempo
+          name: config
+        - emptyDir: {}
+          name: pid
+  updateStrategy:
+    rollingUpdate:
+      partition: 0
+    type: RollingUpdate
+  volumeClaimTemplates:
+    - apiVersion: v1
+      kind: PersistentVolumeClaim
+      metadata:
+        name: tempo-data
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: 10Gi
+        volumeMode: Filesystem
+---
+apiVersion: v1
+kind: Service
+metadata:
+  annotations:
+  labels:
+    app.kubernetes.io/name: tempo
+  name: tempo-headless
+spec:
+  clusterIP: None
+  internalTrafficPolicy: Cluster
+  ports:
+    - appProtocol: tcp
+      name: tempo
+      port: 7999
+      protocol: TCP
+      targetPort: tempo
+  publishNotReadyAddresses: true
+  selector:
+    app.kubernetes.io/name: tempo
+  sessionAffinity: None
+  type: ClusterIP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app.kubernetes.io/name: tempo
+  name: tempo
+spec:
+  internalTrafficPolicy: Cluster
+  ports:
+    - appProtocol: tcp
+      name: tempo
+      port: 7999
+      protocol: TCP
+      targetPort: tempo
+  selector:
+    app.kubernetes.io/name: tempo
+  sessionAffinity: None
+  type: ClusterIP

@@ -1,6 +1,0 @@
-namespace: k6
-resources:
-  - observability
-  - nats
-  - wasmtime
-  - wasmcloud

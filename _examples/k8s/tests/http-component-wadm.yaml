@@ -1,0 +1,107 @@
+apiVersion: core.oam.dev/v1beta1
+kind: Application
+metadata:
+  name: http
+  annotations:
+    description: HTTP Blast Away
+    wasmcloud.dev/authors: Cosmonic
+spec:
+  components:
+    - name: component-blue
+      type: component
+      properties:
+        image: ghcr.io/wasmcloud/components/http-hello-world-rust:0.1.0
+      traits:
+        - type: daemonscaler
+          properties:
+            replicas: 100
+            spread:
+              - name: component-blue
+                requirements:
+                  hostgroup: blue
+
+    - name: component-green
+      type: component
+      properties:
+        image: ghcr.io/wasmcloud/components/http-hello-world-rust:0.1.0
+      traits:
+        - type: daemonscaler
+          properties:
+            replicas: 1000
+            spread:
+              - name: component-green
+                requirements:
+                  hostgroup: green
+
+    # NOTE(lxf): The blue hostgroup hosts components & http provider
+    - name: httpserver-blue
+      type: capability
+      properties:
+        image: ghcr.io/wasmcloud/http-server:0.23.2
+      traits:
+        - type: daemonscaler
+          properties:
+            replicas: 1
+            spread:
+              - name: provider-blue
+                requirements:
+                  hostgroup: blue
+        - type: link
+          properties:
+            name: blue-to-blue
+            target: component-blue
+            namespace: wasi
+            package: http
+            interfaces: [incoming-handler]
+            source_config:
+              - name: blue-http-blue
+                properties:
+                  address: 0.0.0.0:8080
+        - type: link
+          properties:
+            name: blue-to-green
+            target: component-green
+            namespace: wasi
+            package: http
+            interfaces: [incoming-handler]
+            source_config:
+              - name: blue-http-green
+                properties:
+                  address: 0.0.0.0:8081
+
+    # NOTE(lxf): The green hostgroup doesn't have any components.
+    # It has an extra NATS hop between http provider and component, and is a more realistic scenario.
+    - name: httpserver-green
+      type: capability
+      properties:
+        image: ghcr.io/wasmcloud/http-server:0.23.2
+      traits:
+        - type: daemonscaler
+          properties:
+            replicas: 1
+            spread:
+              - name: provider-green
+                requirements:
+                  hostgroup: green
+        - type: link
+          properties:
+            name: green-to-green
+            target: component-green
+            namespace: wasi
+            package: http
+            interfaces: [incoming-handler]
+            source_config:
+              - name: green-http-green
+                properties:
+                  address: 0.0.0.0:8080
+        - type: link
+          properties:
+            name: green-to-blue
+            target: component-blue
+            namespace: wasi
+            package: http
+            interfaces: [incoming-handler]
+            source_config:
+              - name: green-http-blue
+                properties:
+                  address: 0.0.0.0:8081

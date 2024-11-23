@@ -1,0 +1,21 @@
+namePrefix: wasmcloud-blaster-
+
+components:
+  - ../../test-run/
+
+patches:
+  - patch: |-
+      apiVersion: k6.io/v1alpha1
+      kind: TestRun
+      metadata:
+        name: test
+      spec:
+        parallelism: 3
+        script:
+          configMap:
+            name: wasmcloud-tests
+            file: blaster.js
+        runner:
+          metadata:
+            labels:
+              k6-test: "wasmcloud-blaster"

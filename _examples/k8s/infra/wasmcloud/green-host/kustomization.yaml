@@ -1,0 +1,11 @@
+namePrefix: green-
+
+commonLabels:
+  "k6-hostgroup": "green"
+
+replicas:
+  - name: wasmcloud-host
+    count: 1
+
+resources:
+  - ../host-base

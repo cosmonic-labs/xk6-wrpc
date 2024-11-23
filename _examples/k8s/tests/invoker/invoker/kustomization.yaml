@@ -1,0 +1,21 @@
+namePrefix: invoker-
+
+components:
+  - ../../test-run/
+
+patches:
+  - patch: |-
+      apiVersion: k6.io/v1alpha1
+      kind: TestRun
+      metadata:
+        name: test
+      spec:
+        parallelism: 1
+        script:
+          configMap:
+            name: invoker-tests
+            file: invoker.js
+        runner:
+          metadata:
+            labels:
+              k6-test: "invoker"

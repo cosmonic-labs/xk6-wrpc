@@ -1,0 +1,53 @@
+apiVersion: k6.io/v1alpha1
+kind: TestRun
+metadata:
+  name: wasmtime
+spec:
+  parallelism: 1
+  # pod anti-affinity
+  # separate: true
+  arguments: "--tag test-id=wasmtime -o experimental-opentelemetry"
+  runner:
+    image: ghcr.io/cosmonic-labs/xk6-wrpc:main
+    imagePullPolicy: Always
+    resources:
+      limits:
+        cpu: "1"
+        ephemeral-storage: 1Gi
+        memory: 1Gi
+      requests:
+        cpu: "1"
+        ephemeral-storage: 1Gi
+        memory: 1Gi
+    env:
+      - name: K6_OTEL_GRPC_EXPORTER_INSECURE
+        value: "true"
+      - name: K6_OTEL_GRPC_EXPORTER_ENDPOINT
+        value: "opentelemetry-collector-headless:4317"
+      - name: K6_OTEL_METRIC_PREFIX
+        value: "k6_"
+      - name: GOMEMLIMIT
+        valueFrom:
+          resourceFieldRef:
+            resource: limits.memory
+      - name: GOMAXPROCS
+        valueFrom:
+          resourceFieldRef:
+            resource: limits.cpu
+    metadata:
+      labels:
+        k6-test: "wasmtime"
+    affinity:
+      podAntiAffinity:
+        requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchExpressions:
+                - key: k6-stack
+                  operator: In
+                  values:
+                    - "true"
+            topologyKey: kubernetes.io/hostname
+  script:
+    configMap:
+      name: tests
+      file: wasmtime-test.js
