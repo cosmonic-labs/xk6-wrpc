@@ -6,7 +6,7 @@ RUN go install go.k6.io/xk6/cmd/xk6@latest
 RUN CGO_ENABLED=0 go install github.com/nats-io/natscli/nats@v0.1.5
 RUN CGO_ENABLED=0 go install github.com/rakyll/hey@v0.1.4
 COPY . .
-RUN xk6 build --with xk6-wrpc=. --with github.com/grafana/xk6-dashboard@latest
+RUN xk6 build --with xk6-wrpc=. --with github.com/grafana/xk6-dashboard@latest --with github.com/cosmonic-labs/xk6-nats@latest
 
 
 FROM alpine:latest AS base

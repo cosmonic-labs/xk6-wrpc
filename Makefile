@@ -4,7 +4,7 @@ BUILD_TAG?=latest
 all: build
 
 k6: *.go
-	xk6 build --with xk6-wrpc=. --with github.com/grafana/xk6-dashboard@latest --with github.com/szkiba/xk6-top@latest
+	xk6 build --with xk6-wrpc=. --with github.com/grafana/xk6-dashboard@latest --with github.com/szkiba/xk6-top@latest --with github.com/cosmonic-labs/xk6-nats@latest
 
 bindgen:
 	wit-deps && wit-bindgen-wrpc go --out-dir internal --package $(shell go list)/internal wit
