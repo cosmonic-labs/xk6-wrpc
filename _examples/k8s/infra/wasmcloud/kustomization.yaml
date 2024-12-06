@@ -1,5 +1,0 @@
-namespace: k6
-resources:
-  - blue-host
-  - green-host
-  - wadm.yaml

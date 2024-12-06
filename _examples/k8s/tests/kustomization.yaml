@@ -1,6 +1,0 @@
-namespace: k6
-
-resources:
-  #  - wasmcloud
-  #  - wasmtime
-  - invoker

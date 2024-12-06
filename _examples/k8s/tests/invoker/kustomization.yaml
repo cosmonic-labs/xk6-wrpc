@@ -1,7 +1,0 @@
-resources:
-  - invoker
-
-configMapGenerator:
-  - name: invoker-tests
-    files:
-      - invoker.js

@@ -1,4 +1,0 @@
-namespace: k6
-resources:
-  - invoker.yaml
-  - runtime.yaml

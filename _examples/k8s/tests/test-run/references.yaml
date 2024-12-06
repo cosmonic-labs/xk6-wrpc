@@ -1,5 +1,0 @@
-nameReference:
-  - kind: "ConfigMap"
-    fieldSpecs:
-      - kind: "TestRun"
-        path: "spec/script/configMap/name"

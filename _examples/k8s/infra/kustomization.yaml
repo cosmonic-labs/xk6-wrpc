@@ -1,9 +1,0 @@
-resources:
-  - storageclass.yaml
-  - namespace.yaml
-  - k6-operator
-  - observability
-  - nats
-  #  - wasmtime
-  #  - wasmcloud
-  - invoker

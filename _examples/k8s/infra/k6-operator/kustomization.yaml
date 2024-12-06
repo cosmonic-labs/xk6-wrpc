@@ -1,2 +1,0 @@
-resources:
-  - https://github.com/grafana/k6-operator//config/default?timeout=120&ref=v0.0.18

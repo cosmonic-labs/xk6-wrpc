@@ -1,3 +1,0 @@
-namespace: k6
-resources:
-  - wasmtime.yaml
