@@ -1,4 +1,4 @@
-name = "blaster-component"
+name = "blaster"
 language = "tinygo"
 type = "component"
 version = "0.1.0"

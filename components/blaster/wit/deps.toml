@@ -1,2 +1,2 @@
-xk6-wrpc = "../../shared-wit"
+xk6-wrpc = "../../../shared-wit"
 wasi-cli = "https://github.com/WebAssembly/wasi-cli/archive/refs/tags/v0.2.0.tar.gz"

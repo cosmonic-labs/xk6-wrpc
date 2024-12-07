@@ -25,6 +25,6 @@ sha512 = "da2622210a9e3eea82b99f1a5b8a44ce5443d009cb943f7bca0bf9cf4360829b289913
 deps = ["clocks", "filesystem", "io", "random", "sockets"]
 
 [xk6-wrpc]
-path = "../../shared-wit"
+path = "../../../shared-wit"
 sha256 = "de73abe3ad2da22ff1076bbf1be15109808f327228ad0f387c19d9a6441d3c95"
 sha512 = "0d06f04b1a004d7bc4a6972b1a67f071f148666ccd202f2bfb1ff135e21894c88417b38109a50a3e0dbdeab8659616bb2549e3e9451492b418e611b6120035d1"
