@@ -5,7 +5,7 @@ FROM ghcr.io/bytecodealliance/wrpc:cb43ec8 AS wrpc
 FROM golang:1.23.4 AS build
 ENV TINYGO_RELEASE=0.34.0
 ENV WASMTOOLS_VERSION=1.221.2
-ENV PATH=${PATH}:/usr/local/tinygo/bin
+ENV PATH=/usr/local/tinygo/bin:${PATH}
 ARG TARGETOS
 ARG TARGETARCH
 
